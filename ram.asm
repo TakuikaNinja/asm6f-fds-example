@@ -21,7 +21,7 @@
 
 ; stack
 ; FDS BIOS vector flags
-.enum $0100
+	.enum $0100
 	NMI_FLAG .dsb 1 ; (bits 6 & 7)
 	IRQ_FLAG .dsb 1 ; (bits 6 & 7)
 	RST_FLAG .dsb 1 ; $35 = skip BIOS
