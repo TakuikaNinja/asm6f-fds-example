@@ -24,17 +24,18 @@
 	.db FILE_COUNT
 
 ; CHR
-;	.db FileHeaderBlock
-;	.db $00, $00
-;	.db "GAMECHAR"
-;	.dw $0000
-;	.dw chr_end - chr_start
-;	.db CHR
+	.db FileHeaderBlock
+	.db $00, $00
+	.db "GAMECHAR"
+	.dw $0000
+	.dw chr_end - chr_start
+	.db CHR
 	
-;	.db FileDataBlock
-;	chr_start:
-;	.incbin "example.chr"
-;	chr_end:
+	.db FileDataBlock
+	chr_start:
+	;.incbin "example.chr"
+	.dsb 8912
+	chr_end:
 
 ; PRG
 	.db FileHeaderBlock

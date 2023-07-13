@@ -11,6 +11,23 @@ Reset:
 		and #$f7										; and set for vertical mirroring
 		sta FDS_CTRL
 		
+		jsr InitMemory
+		jsr MoveSpritesOffscreen
+		jsr InitNametables
+		
+		lda PPU_CTRL_MIRROR								; enable NMIs
+		ora #%10000000
+		sta PPU_CTRL
+		sta PPU_CTRL_MIRROR
+		
+Main:
+
+		inc NMIReady
+
+WaitForNMI:
+		lda NMIReady
+		bne WaitForNMI
+		beq Main
 
 ; "NMI" routine which is entered to bypass the BIOS check
 Bypass:
@@ -29,14 +46,80 @@ Bypass:
 		
 		jmp ($fffc)										; jump to reset FDS
 		
-; NMI handler (unused for now)
+; NMI handler
 NonMaskableInterrupt:
+		pha
+		lda NMIRunning
+		beq ProceedWithNMI
+		
+		pla
+		rti
+
+ProceedWithNMI:
+		inc NMIRunning
+		
+		txa
+		pha
+		tya
+		pha
+		
+		lda NMIReady
+		beq NotReady
+		
+		jsr SpriteDMA
+		
+		dec NMIReady
+		
+		jsr ReadOrDownVerifyPads
+
+NotReady:
+		jsr SetScroll
+		
+		pla
+		tay
+		pla
+		tax
+		pla
+		
+		dec NMIRunning
 		rti
 		
 ; IRQ handler (unused for now)
 InterruptRequest:
 		rti
 		
+MoveSpritesOffscreen:
+		lda #$ff										; fill OAM buffer with $ff to move offscreen
+		ldx #$02
+		ldy #$02
+		jmp MemFill
+
+InitMemory:
+		lda #$00
+		tax
+		
+-
+		sta $00,x										; clear $00~$f0
+		inx
+		cpx #$f1
+		bne -
+		
+		ldx #$03										; clear $0300~$0700
+		ldy #$07
+		jmp MemFill
+
+InitNametables:
+		lda #$20										; top-left
+		jsr InitNametable
+		lda #$24										; top-right
+
+InitNametable:
+		ldx #$00										; clear nametable & attributes for high address held in A
+		ldy #$00
+		jmp VRAMFill
+		
+Prepare
+
 .org NMI_1
 	.dw NonMaskableInterrupt
 	.dw NonMaskableInterrupt

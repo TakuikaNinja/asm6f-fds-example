@@ -3,6 +3,8 @@
 ; zeropage
 	.enum $0000
 	temp .dsb 16 ; temp memory used by FDS BIOS
+	NMIRunning .dsb 1
+	NMIReady .dsb 1
 
 ; controller states
 	.enum $00f1
