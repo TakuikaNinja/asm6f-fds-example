@@ -1,6 +1,6 @@
 ; defines
-; NES hardware defines
 
+; FC hardware defines
 PPU_CTRL = $2000
 PPU_MASK = $2001
 PPU_STATUS = $2002
@@ -21,7 +21,6 @@ JOY1 = $4016
 JOY2 = $4017
 
 ; FDS hardware defines
-
 FDS_IRQ_TIMER_LOW = $4020
 FDS_IRQ_TIMER_HI  = $4021
 FDS_IRQ_TIMER_CTRL = $4022
@@ -35,7 +34,14 @@ FDS_DRIVE_STATUS = $4032
 FDS_BATTERY_EXT = $4033 ; bit 7 = battery, rest are shared with FDS_EXT
 
 ; FDS BIOS defines
+; game vectors
+NMI_1 = $dff6
+NMI_2 = $dff8
+NMI_3 = $dffa ; default
+RESET = $dffc
+IRQ = $dffe
 
+; disk access
 LoadFiles = $e1f8
 AppendFile = $e237
 WriteFile = $e239
@@ -45,34 +51,49 @@ SetFileCount1 = $e301
 SetFileCount = $e305
 GetDiskInfo = $e32a
 
+; low-level disk access
 CheckDiskHeader = $e445
 GetNumFiles = $e484
 SetNumFiles = $e492
 FileMatchTest = $e4a0
 SkipFiles = $e4da
 
-Delay132 = $e149
-Delayms = $e153
+; delays
+Delay132 = $e149 ; 132 clock cycle delay
+Delayms = $e153 ; delay = 1790*Y+5 cycles
+
+; sprite/bg rendering
 DisPFObj = $e161
 EnPFObj = $e16b
 DisObj = $e171
 EnObj = $e178
 DisPF = $e17e
 EnPF = $e185
-VINTWait = $e1b2
-VRAMStructWrite = $e7bb
+
+VINTWait = $e1b2 ; wait for NMI
+
+VRAMStructWrite = $e7bb ; custom VRAM buffer transfer
+
 FetchDirectPointer = $e844
+
+; VRAM buffer routines
 WriteVRAMBuffer = $e86a
 ReadVRAMBuffer = $e8b3
 PrepareVRAMString = $e8d2
 PrepareVRAMStrings = $e8e1
 GetVRAMBufferByte = $e94f
+
+; pixel <-> nametable address conversion (single screen)
 Pixel2NamConv = $e97d
 Nam2PixelConv = $e997
-Random = $e9b1
-SpriteDMA = $e9c8
-CounterLogic = $e9d3
 
+Random = $e9b1
+
+SpriteDMA = $e9c8
+
+CounterLogic = $e9d3 ; decrements several decimal counters in zeropage
+
+; controller polling
 ReadPads = $e9eb
 ReadDownPads = $ea1a
 ReadOrDownPads = $ea1f
@@ -80,11 +101,16 @@ ReadDownVerifyPads = $ea36
 ReadOrDownVerifyPads = $ea4c
 ReadDownExpPads = $ea68
 
+; memory filling
 VRAMFill = $ea84
 MemFill = $ead2
+
 SetScroll = $eaea
+
 JumpEngine = $eafd
+
 ReadKeyboard = $eb13
+
 LoadTileset = $ebaf
 
 unk_EC22 = $ec22 ; apparently adds an object to OAM
