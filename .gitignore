@@ -1,0 +1,7 @@
+*.fds
+*.lst
+.DS_Store
+Thumbs.db
+*.cdl
+*.bat
+*.exe
