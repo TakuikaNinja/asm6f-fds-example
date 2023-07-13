@@ -15,18 +15,22 @@ Reset:
 		jsr MoveSpritesOffscreen
 		jsr InitNametables
 		
-		lda PPU_CTRL_MIRROR								; enable NMIs
-		ora #%10000000
-		sta PPU_CTRL
-		sta PPU_CTRL_MIRROR
+		lda #$fd										; set VRAM buffer size to max value ($0302~$03ff)
+		sta VRAM_BUFFER_SIZE
+		
+		lda #%00011110
+		jsr UpdatePPUMask
+		
+		lda #%10000000									; enable NMIs & change background pattern map access
+		jsr UpdatePPUCtrl
 		
 Main:
 
 		inc NMIReady
 
-WaitForNMI:
+-
 		lda NMIReady
-		bne WaitForNMI
+		bne -
 		beq Main
 
 ; "NMI" routine which is entered to bypass the BIOS check
@@ -50,12 +54,12 @@ Bypass:
 NonMaskableInterrupt:
 		pha
 		lda NMIRunning
-		beq ProceedWithNMI
+		beq +
 		
 		pla
 		rti
 
-ProceedWithNMI:
++
 		inc NMIRunning
 		
 		txa
@@ -67,7 +71,16 @@ ProceedWithNMI:
 		beq NotReady
 		
 		jsr SpriteDMA
+		jsr MoveSpritesOffscreen
 		
+		lda NeedPPUMask
+		beq +
+		
+		lda PPU_MASK_MIRROR
+		sta PPU_MASK
+		dec NeedPPUMask
+
++
 		dec NMIReady
 		
 		jsr ReadOrDownVerifyPads
@@ -87,7 +100,18 @@ NotReady:
 ; IRQ handler (unused for now)
 InterruptRequest:
 		rti
-		
+
+UpdatePPUMask:
+		sta PPU_MASK_MIRROR
+		lda #$01
+		sta NeedPPUMask
+		rts
+
+UpdatePPUCtrl:
+		sta PPU_CTRL
+		sta PPU_CTRL_MIRROR
+		rts
+
 MoveSpritesOffscreen:
 		lda #$ff										; fill OAM buffer with $ff to move offscreen
 		ldx #$02
@@ -104,7 +128,7 @@ InitMemory:
 		cpx #$f1
 		bne -
 		
-		ldx #$03										; clear $0300~$0700
+		ldx #$04										; clear $0400~$0700
 		ldy #$07
 		jmp MemFill
 

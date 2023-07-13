@@ -33,8 +33,7 @@
 	
 	.db FileDataBlock
 	chr_start:
-	;.incbin "example.chr"
-	.dsb 8912
+	.incbin "Jroatch-chr-sheet.chr"
 	chr_end:
 
 ; PRG
