@@ -6,6 +6,7 @@
 	NMIRunning .dsb 1
 	NMIReady .dsb 1
 	NeedPPUMask .dsb 1
+	NeedDMA .dsb 1
 
 ; controller states
 	.enum $00f1
@@ -42,5 +43,6 @@
 
 ; rest of memory
 	.enum $0400
+	TestObject .dsb 12
 	
 	.ende

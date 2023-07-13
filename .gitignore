@@ -3,5 +3,6 @@
 .DS_Store
 Thumbs.db
 *.cdl
+*.mlb
 *.bat
 *.exe

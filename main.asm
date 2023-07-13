@@ -24,8 +24,10 @@ Reset:
 		lda #%10000000									; enable NMIs & change background pattern map access
 		jsr UpdatePPUCtrl
 		
+		jsr InitObject
+		
 Main:
-
+		jsr SpriteHandler
 		inc NMIReady
 
 -
@@ -70,9 +72,14 @@ NonMaskableInterrupt:
 		lda NMIReady
 		beq NotReady
 		
+		lda NeedDMA
+		beq +
+		
 		jsr SpriteDMA
 		jsr MoveSpritesOffscreen
+		dec NeedDMA
 		
++
 		lda NeedPPUMask
 		beq +
 		
@@ -118,6 +125,34 @@ MoveSpritesOffscreen:
 		ldy #$02
 		jmp MemFill
 
+InitObject:
+		lda #$78										; position object
+		sta TestObject+1
+		sta TestObject+3
+		
+		lda #>TestObjectTiles							; tile arrangement pointer
+		sta TestObject+6
+		lda #<TestObjectTiles
+		sta TestObject+7
+		
+		lda #$22										; height/width in tiles
+		sta TestObject+10
+		rts
+
+SpriteHandler:
+		lda #<TestObject
+		sta temp
+		lda #>TestObject
+		sta temp+1
+		jsr UploadObject
+		
+		lda #$01
+		sta NeedDMA
+		rts
+
+TestObjectTiles:
+	.db $d0, $d2, $d1, $d3
+
 InitMemory:
 		lda #$00
 		tax
@@ -128,7 +163,7 @@ InitMemory:
 		cpx #$f1
 		bne -
 		
-		ldx #$04										; clear $0400~$0700
+		ldx #$03										; clear $0300~$0700
 		ldy #$07
 		jmp MemFill
 
@@ -141,8 +176,6 @@ InitNametable:
 		ldx #$00										; clear nametable & attributes for high address held in A
 		ldy #$00
 		jmp VRAMFill
-		
-Prepare
 
 .org NMI_1
 	.dw NonMaskableInterrupt

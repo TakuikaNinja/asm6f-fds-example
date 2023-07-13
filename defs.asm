@@ -124,6 +124,6 @@
 
 	LoadTileset = $ebaf
 
-	unk_EC22 = $ec22 ; apparently adds an object to OAM
+	UploadObject = $ec22 ; apparently adds an object to OAM
 
 	.ende

@@ -5,6 +5,6 @@
 - [x] Create/import CHR file for displaying stuff
 - [x] Demonstrate RESET, NMI handling
 - [ ] Demonstrate custom IRQ usage if possible
-- [ ] Demonstrate sprite rendering (using BIOS routines if possible)
+- [x] Demonstrate sprite rendering (using BIOS routines if possible)
 - [ ] Demonstrate VRAM uploads using the BIOS routines
-- [ ] Demonstrate issues with the BIOS' "DMC safe" controller polling routine 
+- [ ] Demonstrate issues with the BIOS' "DMC safe" controller polling routine
