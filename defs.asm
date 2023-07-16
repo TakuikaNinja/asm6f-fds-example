@@ -126,4 +126,5 @@
 
 	UploadObject = $ec22 ; apparently adds an object to OAM
 
+.include "constants.asm"
 	.ende

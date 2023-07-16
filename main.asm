@@ -11,6 +11,11 @@ Reset:
 		and #$f7										; and set for vertical mirroring
 		sta FDS_CTRL
 		
+		lda RST_TYPE_MIRROR								; retrieve the reset type we saved earlier
+		sta RST_TYPE
+		lda #$53										; and queue the soft reset type for next time
+		sta RST_TYPE_MIRROR
+		
 		jsr InitMemory
 		jsr MoveSpritesOffscreen
 		jsr InitNametables
@@ -18,22 +23,21 @@ Reset:
 		lda #$fd										; set VRAM buffer size to max value ($0302~$03ff)
 		sta VRAM_BUFFER_SIZE
 		
-		lda #%00011110
+		lda #%00011110									; enable sprites/background and queue it for next NMI
 		jsr UpdatePPUMask
 		
 		lda #%10000000									; enable NMIs & change background pattern map access
-		jsr UpdatePPUCtrl
-		
-		jsr InitObject
+		sta PPU_CTRL
+		sta PPU_CTRL_MIRROR
 		
 Main:
 		jsr SpriteHandler
 		inc NMIReady
 
 -
-		lda NMIReady
+		lda NMIReady									; the usual NMI wait loop
 		bne -
-		beq Main
+		beq Main										; unconditional branch back to main loop
 
 ; "NMI" routine which is entered to bypass the BIOS check
 Bypass:
@@ -49,6 +53,7 @@ Bypass:
 		sta RST_FLAG
 		lda #$ac
 		sta RST_TYPE
+		sta RST_TYPE_MIRROR								; save reset type to mirror as it will be clobbered
 		
 		jmp ($fffc)										; jump to reset FDS
 		
@@ -114,11 +119,6 @@ UpdatePPUMask:
 		sta NeedPPUMask
 		rts
 
-UpdatePPUCtrl:
-		sta PPU_CTRL
-		sta PPU_CTRL_MIRROR
-		rts
-
 MoveSpritesOffscreen:
 		lda #$ff										; fill OAM buffer with $ff to move offscreen
 		ldx #$02
@@ -126,9 +126,16 @@ MoveSpritesOffscreen:
 		jmp MemFill
 
 InitObject:
-		lda #$78										; position object
-		sta TestObject+1
-		sta TestObject+3
+		ldy #$00
+		sty TestObject									; render flag
+		sty TestObject+5								; animation frame
+		sty TestObject+8								; object flags
+		sty TestObject+9								; palette
+		sty TestObject+11								; object index in OAM
+		
+		lda #$78										; position object at centre of screen
+		sta ObjectY
+		sta ObjectX
 		
 		lda #>TestObjectTiles							; tile arrangement pointer
 		sta TestObject+6
@@ -137,21 +144,107 @@ InitObject:
 		
 		lda #$22										; height/width in tiles
 		sta TestObject+10
+		
+		inc ObjectActive								; set active flag
+		
 		rts
 
 SpriteHandler:
-		lda #<TestObject
+		lda ObjectActive								; skip object init if already active
+		bne +
+
+		jsr InitObject
+
++
+		jsr MoveObject									; move and position object
+		lda ObjectY
+		sta TestObject+1
+		lda ObjectX
+		sta TestObject+3
+
+		lda #<TestObject								; put object pointer into ($00)
 		sta temp
 		lda #>TestObject
 		sta temp+1
-		jsr UploadObject
+		jsr UploadObject								; and call BIOS routine to upload it to the OAM buffer
 		
-		lda #$01
+		lda #$01										; queue OAM DMA for the next NMI
 		sta NeedDMA
 		rts
 
 TestObjectTiles:
 	.db $d0, $d2, $d1, $d3
+
+MoveObject:
+		lda #$00										; reset speed variables
+		sta ObjectXSpeed
+		sta ObjectYSpeed
+		
+		lda Buttons+2									; leave early if no directions held
+		and #BUTTON_LEFT | #BUTTON_RIGHT | #BUTTON_UP | #BUTTON_DOWN
+		bne MoveX
+		
+		rts
+
+MoveX:													; move object horizontally, clamping within screen
+		lda Buttons+2
+		and #BUTTON_LEFT
+		beq +
+		
+		lda ObjectX
+		beq +
+		
+		lda #$ff
+		sta ObjectXSpeed
+		
++
+		lda Buttons+2
+		and #BUTTON_RIGHT
+		beq +
+		
+		lda ObjectX
+		cmp #$f0
+		bcs +
+		
+		lda #$01
+		sta ObjectXSpeed
+		
++
+		lda ObjectX
+		clc
+		adc ObjectXSpeed
+		sta ObjectX
+
+MoveY:													; move object vertically, clamping within screen
+		lda Buttons+2
+		and #BUTTON_UP
+		beq +
+		
+		lda ObjectY
+		beq +
+		
+		lda #$ff
+		sta ObjectYSpeed
+		
++
+		lda Buttons+2
+		and #BUTTON_DOWN
+		beq +
+		
+		lda ObjectY
+		cmp #$e0
+		bcs +
+		
+		lda #$01
+		sta ObjectYSpeed
+
++
+		lda ObjectY
+		clc
+		adc ObjectYSpeed
+		sta ObjectY
+		
+		rts
 
 InitMemory:
 		lda #$00
@@ -180,6 +273,6 @@ InitNametable:
 .org NMI_1
 	.dw NonMaskableInterrupt
 	.dw NonMaskableInterrupt
-	.dw Bypass
+	.dw Bypass											; default NMI vector
 	.dw Reset
 	.dw InterruptRequest

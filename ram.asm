@@ -7,6 +7,11 @@
 	NMIReady .dsb 1
 	NeedPPUMask .dsb 1
 	NeedDMA .dsb 1
+	ObjectActive .dsb 1
+	ObjectX .dsb 1
+	ObjectY .dsb 1
+	ObjectXSpeed .dsb 1
+	ObjectYSpeed .dsb 1
 
 ; controller states
 	.enum $00f1
@@ -30,6 +35,10 @@
 	IRQ_FLAG .dsb 1 ; (bits 6 & 7)
 	RST_FLAG .dsb 1 ; $35 = skip BIOS
 	RST_TYPE .dsb 1 ; $ac = first boot, $53 = soft-reset
+	
+	RST_TYPE_MIRROR .dsb 1 ; temporary mirror to preserve the reset type
+	
+	TestObject .dsb 12
 
 ; OAM buffer
 	.enum $0200
@@ -43,6 +52,5 @@
 
 ; rest of memory
 	.enum $0400
-	TestObject .dsb 12
 	
 	.ende
