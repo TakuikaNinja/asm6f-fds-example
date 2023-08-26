@@ -1,6 +1,9 @@
 ; constants
 
 ; buttons
+	P1_PRESSED    = Buttons
+	P1_HELD       = Buttons+2
+	
 	BUTTON_A      = 1 << 7
 	BUTTON_B      = 1 << 6
 	BUTTON_SELECT = 1 << 5

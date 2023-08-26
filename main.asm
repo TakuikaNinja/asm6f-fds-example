@@ -17,7 +17,6 @@ Reset:
 		sta RST_TYPE_MIRROR
 		
 		jsr InitMemory
-		jsr MoveSpritesOffscreen
 		jsr InitNametables
 		
 		lda #$fd										; set VRAM buffer size to max value ($0302~$03ff)
@@ -81,7 +80,6 @@ NonMaskableInterrupt:
 		beq +
 		
 		jsr SpriteDMA
-		jsr MoveSpritesOffscreen
 		dec NeedDMA
 		
 +
@@ -150,6 +148,8 @@ InitObject:
 		rts
 
 SpriteHandler:
+		jsr MoveSpritesOffscreen
+		
 		lda ObjectActive								; skip object init if already active
 		bne +
 
@@ -166,11 +166,11 @@ SpriteHandler:
 		sta temp
 		lda #>TestObject
 		sta temp+1
-		jsr UploadObject								; and call BIOS routine to upload it to the OAM buffer
 		
 		lda #$01										; queue OAM DMA for the next NMI
 		sta NeedDMA
-		rts
+		
+		jmp UploadObject								; call BIOS routine to upload object to the OAM buffer
 
 TestObjectTiles:
 	.db $d0, $d2, $d1, $d3
@@ -180,14 +180,14 @@ MoveObject:
 		sta ObjectXSpeed
 		sta ObjectYSpeed
 		
-		lda Buttons+2									; leave early if no directions held
+		lda P1_HELD										; leave early if no directions held
 		and #BUTTON_LEFT | #BUTTON_RIGHT | #BUTTON_UP | #BUTTON_DOWN
 		bne MoveX
 		
 		rts
 
 MoveX:													; move object horizontally, clamping within screen
-		lda Buttons+2
+		lda P1_HELD
 		and #BUTTON_LEFT
 		beq +
 		
@@ -198,7 +198,7 @@ MoveX:													; move object horizontally, clamping within screen
 		sta ObjectXSpeed
 		
 +
-		lda Buttons+2
+		lda P1_HELD
 		and #BUTTON_RIGHT
 		beq +
 		
@@ -216,7 +216,7 @@ MoveX:													; move object horizontally, clamping within screen
 		sta ObjectX
 
 MoveY:													; move object vertically, clamping within screen
-		lda Buttons+2
+		lda P1_HELD
 		and #BUTTON_UP
 		beq +
 		
@@ -227,7 +227,7 @@ MoveY:													; move object vertically, clamping within screen
 		sta ObjectYSpeed
 		
 +
-		lda Buttons+2
+		lda P1_HELD
 		and #BUTTON_DOWN
 		beq +
 		
@@ -256,8 +256,8 @@ InitMemory:
 		cpx #$f1
 		bne -
 		
-		ldx #$03										; clear $0300~$0700
-		ldy #$07
+		ldx #$02										; clear RAM from $0200 (prevent OAM decay on reset)
+		ldy #$07										; up to and including $0700
 		jmp MemFill
 
 InitNametables:
