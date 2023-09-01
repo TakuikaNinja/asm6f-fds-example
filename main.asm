@@ -32,6 +32,13 @@ Reset:
 Main:
 		jsr SpriteHandler
 		jsr SetBGMode
+		lda DisplayToggle
+		beq +
+		
+		jsr TimerLogic
+		jsr RNGLogic
+		
++
 		inc NMIReady
 
 -
@@ -286,42 +293,101 @@ InitNametable:
 		ldy #$00
 		jmp VRAMFill
 
+TimerLogic:												; convert frame timer to hex chars
+		lda FrameCount+1
+		jsr NumToChars
+		stx Frames
+		sty Frames+1
+		lda FrameCount
+		jsr NumToChars
+		stx Frames+2
+		sty Frames+3
+		rts
+
 ; AX+ TinyRand8
 ; https://codebase64.org/doku.php?id=base:ax_tinyrand8
 Rand8:
-	RNG_=$+1
+	RAND_=$+1
 		lda #35
 		asl
-	RNG=$+1
+	RAND=$+1
 		eor #53
-		sta RNG_
-		adc RNG
-		sta RNG
+		sta RAND_
+		adc RAND
+		sta RAND
 		rts
 
-; seeding function
 SetSeed:
-		pha
+		lda FrameCount
 		and #217
 		clc
 		adc #<21263
-		sta RNG
-		pla
+		sta RAND
+		lda FrameCount
 		and #255-217
 		adc #>21263
-		sta RNG_
+		sta RAND_
 		rts
+
+RNGLogic:
+		ldx RAND
+		lda P1_PRESSED									; seed RNG with frame count if Start pressed
+		and #BUTTON_START
+		beq +
+
+		jsr SetSeed
+		
++
+		lda P1_PRESSED									; get RNG number if B pressed
+		and #BUTTON_B
+		beq +
+		
+		jsr Rand8
+		tax
+		
++
+		txa
+		jsr NumToChars
+		stx RNG
+		sty RNG+1
+		rts
+
+
+NumToChars:													; converts A into hex chars and puts them in X/Y
+		pha
+		and #$0f
+		tay
+		lda NybbleToChar,y
+		sta temp
+		pla
+		lsr
+		lsr
+		lsr
+		lsr
+		tay
+		lda NybbleToChar,y
+		tax
+		ldy temp
+		rts
+
+NybbleToChar:
+	.db "0123456789ABCDEF"
 
 SetBGMode:
 		ldx BGMode										; BG mode 0 = palette + initial text, draw immediately
-		beq DrawBG
+		bne +
 		
+		jsr DrawBG
+		inc BGMode
+		rts
+		
++
 		lda P1_PRESSED									; otherwise toggle BG modes 1/2 via A press
 		and #BUTTON_A
-		beq +											; skip drawing if not pressed
+		beq DrawBG										; skip toggle if not pressed
 		
-		lda #$01
-		eor DisplayToggle
+		lda DisplayToggle								; toggle BG mode and transfer to X
+		eor #$01
 		sta DisplayToggle
 		tax
 		inx
@@ -334,7 +400,7 @@ DrawBG:
 		
 		lda #$01										; queue the VRAM transfer
 		sta NeedDraw
-		sta BGMode
+		stx BGMode
 +
 		rts
 
@@ -374,7 +440,7 @@ BlankData:
 	.db %01000000 | FramesLength						; d7=increment mode (+1), d6=transfer mode (fill), length
 	.db " "
 	.db $21, $09										; destination address (BIG endian)
-	.db %01000000 | RandomLength						; d7=increment mode (+1), d6=transfer mode (fill), length
+	.db %01000000 | RNGLength						; d7=increment mode (+1), d6=transfer mode (fill), length
 	.db " "
 	.db $ff												; terminator
 
@@ -388,12 +454,12 @@ Frames:
 FramesLength=$-FramesChars
 
 	.db $21, $09										; destination address (BIG endian)
-	.db %00000000 | RandomLength						; d7=increment mode (+1), d6=transfer mode (copy), length
-RandomChars:
-	.db "Random =  "
-Random:
+	.db %00000000 | RNGLength							; d7=increment mode (+1), d6=transfer mode (copy), length
+RNGChars:
+	.db "RNG =  "
+RNG:
 	.db "00"
-RandomLength=$-RandomChars
+RNGLength=$-RNGChars
 	.db $ff												; terminator
 
 .org NMI_1
