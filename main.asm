@@ -19,6 +19,9 @@ Reset:
 		jsr InitMemory
 		jsr InitNametables
 		
+		lda #$fd										; set VRAM buffer size to max value ($0302~$03ff)
+		sta VRAM_BUFFER_SIZE
+		
 		lda #%00011110									; enable sprites/background and queue it for next NMI
 		jsr UpdatePPUMask
 		
@@ -28,7 +31,7 @@ Reset:
 		
 Main:
 		jsr SpriteHandler
-		jsr DrawBG
+		jsr SetBGMode
 		inc NMIReady
 
 -
@@ -81,11 +84,12 @@ NonMaskableInterrupt:
 		dec NeedDMA
 		
 +
-		lda NeedDraw									; write from BGData to PPU if required
+		lda NeedDraw									; transfer Data to PPU if required
 		beq +
 		
 		jsr VRAMStructWrite
-	.dw BGData
+Struct:
+	.dw BGData											; this can be overwritten
 		jsr SetScroll									; reset scroll after PPUADDR writes
 		dec NeedDraw
 		
@@ -99,7 +103,13 @@ NonMaskableInterrupt:
 
 +
 		dec NMIReady
-		inc FrameCount
+		
+		inc FrameCount									; increment frame timer
+		bne +
+
+		inc FrameCount+1
+		
++
 		jsr ReadOrDownVerifyPads						; read controllers, including expansion port (NOT DMC safe!)
 
 NotReady:
@@ -176,7 +186,6 @@ SpriteHandler:
 		
 		lda #$01										; queue OAM DMA for the next NMI
 		sta NeedDMA
-		
 		jmp UploadObject								; call BIOS routine to upload object to the OAM buffer
 
 TestObjectTiles:
@@ -303,59 +312,89 @@ SetSeed:
 		sta RNG_
 		rts
 
+SetBGMode:
+		ldx BGMode										; BG mode 0 = palette + initial text, draw immediately
+		beq DrawBG
+		
+		lda P1_PRESSED									; otherwise toggle BG modes 1/2 via A press
+		and #BUTTON_A
+		beq +											; skip drawing if not pressed
+		
+		lda #$01
+		eor DisplayToggle
+		sta DisplayToggle
+		tax
+		inx
+
 DrawBG:
-		lda BGDrawn										; skip if background has already been drawn
-		bne +
+		lda StructAddrsLo,x								; index into LUT and set Struct address in NMI handler
+		sta Struct
+		lda StructAddrsHi,x
+		sta Struct+1
 		
-		lda #$01										; otherwise set flags for...
-		sta NeedDraw									; queuing the VRAM transfer,
-		sta BGDrawn										; and the background being drawn
-		
+		lda #$01										; queue the VRAM transfer
+		sta NeedDraw
+		sta BGMode
 +
 		rts
 
-BGData:													; VRAM transfer structure
-	.db $4c												; JSR
-	.dw Palettes
-	.db $4c												; JSR
-	.dw Text1
-	.db $4c												; JSR
-	.dw Text2
-	.db $ff												; terminator
+StructAddrsLo:
+	.db <BGData, <BlankData, <NumData
 	
+StructAddrsHi:
+	.db >BGData, >BlankData, >NumData
+
+BGData:													; VRAM transfer structure
 Palettes:
 	.db $3f, $00										; destination address (BIG endian)
 	.db %00000000 | PaletteSize							; d7=increment mode (+1), d6=transfer mode (copy), length
 	
 PaletteData:
 	.db $0f, $00, $10, $20
-	.db $0f, $00, $10, $20
-	.db $0f, $00, $10, $20
-	.db $0f, $00, $10, $20
-	.db $0f, $27, $16, $01
-	.db $0f, $27, $30, $1a
-	.db $0f, $27, $16, $01
-	.db $0f, $27, $30, $1a
 PaletteSize=$-PaletteData
-	.db $60												; RTS
-	
-Text1:
+
+TextData:
 	.db $20, $87										; destination address (BIG endian)
 	.db %00000000 | Text1Length							; d7=increment mode (+1), d6=transfer mode (copy), length
 	
 Chars1:
 	.db "asm6f-fds-example"
 Text1Length=$-Chars1
-	.db $60												; RTS
 
-Text2:
 	.db $20, $a8										; destination address (BIG endian)
 	.db %00000000 | Text2Length							; d7=increment mode (+1), d6=transfer mode (copy), length
 	
 Chars2:
 	.db "by TakuikaNinja"
 Text2Length=$-Chars2
-	.db $60												; RTS
+	.db $ff												; terminator
+
+BlankData:
+	.db $20, $e9										; destination address (BIG endian)
+	.db %01000000 | FramesLength						; d7=increment mode (+1), d6=transfer mode (fill), length
+	.db " "
+	.db $21, $09										; destination address (BIG endian)
+	.db %01000000 | RandomLength						; d7=increment mode (+1), d6=transfer mode (fill), length
+	.db " "
+	.db $ff												; terminator
+
+NumData:
+	.db $20, $e9										; destination address (BIG endian)
+	.db %00000000 | FramesLength						; d7=increment mode (+1), d6=transfer mode (copy), length
+FramesChars:
+	.db "Frames = "
+Frames:
+	.db "0000"
+FramesLength=$-FramesChars
+
+	.db $21, $09										; destination address (BIG endian)
+	.db %00000000 | RandomLength						; d7=increment mode (+1), d6=transfer mode (copy), length
+RandomChars:
+	.db "Random =  "
+Random:
+	.db "00"
+RandomLength=$-RandomChars
+	.db $ff												; terminator
 
 .org NMI_1
 	.dw NonMaskableInterrupt

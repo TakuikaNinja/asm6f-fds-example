@@ -13,8 +13,9 @@
 	ObjectY .dsb 1
 	ObjectXSpeed .dsb 1
 	ObjectYSpeed .dsb 1
-	FrameCount .dsb 1
-	BGDrawn .dsb 1
+	FrameCount .dsb 2
+	BGMode .dsb 1
+	DisplayToggle .dsb 1
 
 ; controller states
 	.enum $00f1
