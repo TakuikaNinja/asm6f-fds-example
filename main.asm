@@ -19,9 +19,6 @@ Reset:
 		jsr InitMemory
 		jsr InitNametables
 		
-		lda #$fd										; set VRAM buffer size to max value ($0302~$03ff)
-		sta VRAM_BUFFER_SIZE
-		
 		lda #%00011110									; enable sprites/background and queue it for next NMI
 		jsr UpdatePPUMask
 		
@@ -31,6 +28,7 @@ Reset:
 		
 Main:
 		jsr SpriteHandler
+		jsr DrawBG
 		inc NMIReady
 
 -
@@ -58,32 +56,41 @@ Bypass:
 		
 ; NMI handler
 NonMaskableInterrupt:
-		pha
-		lda NMIRunning
+		pha												; back up A
+		lda NMIRunning									; exit if NMI is already in progress
 		beq +
 		
 		pla
 		rti
 
 +
-		inc NMIRunning
+		inc NMIRunning									; set flag for NMI in progress
 		
-		txa
+		txa												; back up X/Y
 		pha
 		tya
 		pha
 		
-		lda NMIReady
+		lda NMIReady									; check if ready to do NMI logic (i.e. not a lag frame)
 		beq NotReady
 		
-		lda NeedDMA
+		lda NeedDMA										; do sprite DMA if required
 		beq +
 		
 		jsr SpriteDMA
 		dec NeedDMA
 		
 +
-		lda NeedPPUMask
+		lda NeedDraw									; write from BGData to PPU if required
+		beq +
+		
+		jsr VRAMStructWrite
+	.dw BGData
+		jsr SetScroll									; reset scroll after PPUADDR writes
+		dec NeedDraw
+		
++
+		lda NeedPPUMask									; write PPUMASK if required
 		beq +
 		
 		lda PPU_MASK_MIRROR
@@ -92,19 +99,19 @@ NonMaskableInterrupt:
 
 +
 		dec NMIReady
-		
-		jsr ReadOrDownVerifyPads
+		inc FrameCount
+		jsr ReadOrDownVerifyPads						; read controllers, including expansion port (NOT DMC safe!)
 
 NotReady:
-		jsr SetScroll
+		jsr SetScroll									; remember to set scroll on lag frames
 		
-		pla
+		pla												; restore X/Y/A
 		tay
 		pla
 		tax
 		pla
 		
-		dec NMIRunning
+		dec NMIRunning									; clear flag for NMI in progres before exiting
 		rti
 		
 ; IRQ handler (unused for now)
@@ -187,59 +194,59 @@ MoveObject:
 		rts
 
 MoveX:													; move object horizontally, clamping within screen
-		lda P1_HELD
+		lda P1_HELD										; left
 		and #BUTTON_LEFT
 		beq +
 		
-		lda ObjectX
+		lda ObjectX										; don't move if at left edge
 		beq +
 		
-		lda #$ff
+		lda #$ff										; otherwise set X speed to -1
 		sta ObjectXSpeed
 		
 +
-		lda P1_HELD
+		lda P1_HELD										; right
 		and #BUTTON_RIGHT
 		beq +
 		
-		lda ObjectX
+		lda ObjectX										; don't move if at right edge
 		cmp #$f0
 		bcs +
 		
-		lda #$01
+		lda #$01										; otherwise set X speed to 1
 		sta ObjectXSpeed
 		
 +
-		lda ObjectX
+		lda ObjectX										; add X speed to X position
 		clc
 		adc ObjectXSpeed
 		sta ObjectX
 
 MoveY:													; move object vertically, clamping within screen
-		lda P1_HELD
+		lda P1_HELD										; up
 		and #BUTTON_UP
 		beq +
 		
-		lda ObjectY
+		lda ObjectY										; don't move if at top edge
 		beq +
 		
-		lda #$ff
+		lda #$ff										; otherwise set Y speed to -1
 		sta ObjectYSpeed
 		
 +
-		lda P1_HELD
+		lda P1_HELD										; down
 		and #BUTTON_DOWN
 		beq +
 		
-		lda ObjectY
+		lda ObjectY										; don't move if at bottom edge
 		cmp #$e0
 		bcs +
 		
-		lda #$01
+		lda #$01										; otherwise set Y speed to 1
 		sta ObjectYSpeed
 
 +
-		lda ObjectY
+		lda ObjectY										; add Y speed to Y position
 		clc
 		adc ObjectYSpeed
 		sta ObjectY
@@ -269,6 +276,86 @@ InitNametable:
 		ldx #$00										; clear nametable & attributes for high address held in A
 		ldy #$00
 		jmp VRAMFill
+
+; AX+ TinyRand8
+; https://codebase64.org/doku.php?id=base:ax_tinyrand8
+Rand8:
+	RNG_=$+1
+		lda #35
+		asl
+	RNG=$+1
+		eor #53
+		sta RNG_
+		adc RNG
+		sta RNG
+		rts
+
+; seeding function
+SetSeed:
+		pha
+		and #217
+		clc
+		adc #<21263
+		sta RNG
+		pla
+		and #255-217
+		adc #>21263
+		sta RNG_
+		rts
+
+DrawBG:
+		lda BGDrawn										; skip if background has already been drawn
+		bne +
+		
+		lda #$01										; otherwise set flags for...
+		sta NeedDraw									; queuing the VRAM transfer,
+		sta BGDrawn										; and the background being drawn
+		
++
+		rts
+
+BGData:													; VRAM transfer structure
+	.db $4c												; JSR
+	.dw Palettes
+	.db $4c												; JSR
+	.dw Text1
+	.db $4c												; JSR
+	.dw Text2
+	.db $ff												; terminator
+	
+Palettes:
+	.db $3f, $00										; destination address (BIG endian)
+	.db %00000000 | PaletteSize							; d7=increment mode (+1), d6=transfer mode (copy), length
+	
+PaletteData:
+	.db $0f, $00, $10, $20
+	.db $0f, $00, $10, $20
+	.db $0f, $00, $10, $20
+	.db $0f, $00, $10, $20
+	.db $0f, $27, $16, $01
+	.db $0f, $27, $30, $1a
+	.db $0f, $27, $16, $01
+	.db $0f, $27, $30, $1a
+PaletteSize=$-PaletteData
+	.db $60												; RTS
+	
+Text1:
+	.db $20, $87										; destination address (BIG endian)
+	.db %00000000 | Text1Length							; d7=increment mode (+1), d6=transfer mode (copy), length
+	
+Chars1:
+	.db "asm6f-fds-example"
+Text1Length=$-Chars1
+	.db $60												; RTS
+
+Text2:
+	.db $20, $a8										; destination address (BIG endian)
+	.db %00000000 | Text2Length							; d7=increment mode (+1), d6=transfer mode (copy), length
+	
+Chars2:
+	.db "by TakuikaNinja"
+Text2Length=$-Chars2
+	.db $60												; RTS
 
 .org NMI_1
 	.dw NonMaskableInterrupt

@@ -5,6 +5,7 @@
 	temp .dsb 16 ; temp memory used by FDS BIOS
 	NMIRunning .dsb 1
 	NMIReady .dsb 1
+	NeedDraw .dsb 1
 	NeedPPUMask .dsb 1
 	NeedDMA .dsb 1
 	ObjectActive .dsb 1
@@ -12,6 +13,8 @@
 	ObjectY .dsb 1
 	ObjectXSpeed .dsb 1
 	ObjectYSpeed .dsb 1
+	FrameCount .dsb 1
+	BGDrawn .dsb 1
 
 ; controller states
 	.enum $00f1

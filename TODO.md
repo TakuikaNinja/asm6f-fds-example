@@ -6,5 +6,6 @@
 - [x] Demonstrate RESET, NMI handling
 - [ ] Demonstrate custom IRQ usage if possible
 - [x] Demonstrate sprite rendering (using BIOS routines if possible)
-- [ ] Demonstrate VRAM uploads using the BIOS routines
+- [x] Demonstrate VRAM uploads using the BIOS routines
 - [ ] Demonstrate issues with the BIOS' "DMC safe" controller polling routine
+- [x] Demonstrate usage of PRG-RAM by using self-modifying code (AX+ TinyRand8)
