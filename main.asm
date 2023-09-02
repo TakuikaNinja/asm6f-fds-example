@@ -456,7 +456,7 @@ FramesLength=$-FramesChars
 	.db $21, $09										; destination address (BIG endian)
 	.db %00000000 | RNGLength							; d7=increment mode (+1), d6=transfer mode (copy), length
 RNGChars:
-	.db "RNG =  "
+	.db "Random =  "
 RNG:
 	.db "00"
 RNGLength=$-RNGChars
