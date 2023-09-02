@@ -358,16 +358,15 @@ NumToChars:													; converts A into hex chars and puts them in X/Y
 		and #$0f
 		tay
 		lda NybbleToChar,y
-		sta temp
+		tay
 		pla
 		lsr
 		lsr
 		lsr
 		lsr
-		tay
-		lda NybbleToChar,y
 		tax
-		ldy temp
+		lda NybbleToChar,x
+		tax
 		rts
 
 NybbleToChar:
