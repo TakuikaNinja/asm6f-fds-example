@@ -15,9 +15,9 @@
 	.db 0, 0, 0, 0, 0									; game version, side, disk, disk type, unknown
 	.db FILE_COUNT										; boot file count
 	.db $ff, $ff, $ff, $ff, $ff
-	.db $98, $07, $13									; release date
+	.db $34, $07, $13									; release date (Heisei year)
 	.db $49, $61, 0, 0, 2, 0, 0, 0, 0, 0				; region stuff
-	.db $98, $07, $13									; disk write date
+	.db $34, $10, $08									; disk write date (Heisei year)
 	.db 0, $80, 0, 0, 7, 0, 0, 0, 0						; unknown data, disk writer serial no., actual disk side, price
 
 	.db FileAmountBlock
