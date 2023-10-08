@@ -16,6 +16,8 @@
 	FrameCount .dsb 2
 	BGMode .dsb 1
 	DisplayToggle .dsb 1
+	DMCToggle .dsb 1
+	DMCRate .dsb 1
 
 ; controller states
 	.enum $00f1

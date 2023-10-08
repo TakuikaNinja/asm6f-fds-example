@@ -39,6 +39,7 @@ Main:
 		jsr RNGLogic
 		
 +
+		jsr CheckDMC
 		inc NMIReady
 
 -
@@ -121,6 +122,7 @@ Struct:
 
 NotReady:
 		jsr SetScroll									; remember to set scroll on lag frames
+		jsr HandleDMC
 		
 		pla												; restore X/Y/A
 		tay
@@ -293,6 +295,48 @@ InitNametable:
 		ldy #$00
 		jmp VRAMFill
 
+CheckDMC:
+		ldx #$00										; disable DMC by default
+		lda P1_PRESSED									; check if A was pressed
+		and #BUTTON_A
+		beq +
+		
+		inx												; prepare to enable DMC
+		ldy #$0f										; max playback rate by default
+		lda BGMode										; check if RNG is being displayed
+		cmp #$02
+		bne ++
+		
+		lda RAND										; if so, use RNG value instead
+		and #$0f
+		tay
+++
+		sty DMCRate										; save playback rate for later
+		
++
+		stx DMCToggle									; queue DMC toggle
+		rts
+
+HandleDMC:
+		lda DMCToggle									; check toggle
+		beq +											; skip sample playback if not set
+		
+		lda #<(DMCSample >> 6)							; sample address
+		sta DMC_START
+		lda #((DMCSampleEnd - DMCSample - 1) / 16)		; sample length
+		sta DMC_LEN
+		lda DMCRate										; random playback rate, non-looping					
+		sta DMC_FREQ
+		lda #$0f										; disable DMC
+		sta SND_CHN
+		lda #$3f										; set starting DAC value
+		sta DMC_RAW
+		lda #%00011111									; enable all channels including DMC
+		sta SND_CHN
+		
++
+		rts
+
 TimerLogic:												; convert frame timer to hex chars
 		lda FrameCount+1
 		jsr NumToChars
@@ -381,8 +425,8 @@ SetBGMode:
 		rts
 		
 +
-		lda P1_PRESSED									; otherwise toggle BG modes 1/2 via A press
-		and #BUTTON_A
+		lda P1_PRESSED									; otherwise toggle BG modes 1/2 via Select press
+		and #BUTTON_SELECT
 		beq DrawBG										; skip toggle if not pressed
 		
 		lda DisplayToggle								; toggle BG mode and transfer to X
@@ -460,6 +504,11 @@ RNG:
 	.db "00"
 RNGLength=$-RNGChars
 	.db $ff												; terminator
+
+.org $c000
+DMCSample:
+	.incbin "sample.dmc"
+DMCSampleEnd:
 
 .org NMI_1
 	.dw NonMaskableInterrupt
