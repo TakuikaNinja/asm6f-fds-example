@@ -9,3 +9,4 @@
 - [x] Demonstrate VRAM uploads using the BIOS routines
 - [ ] Demonstrate issues with the BIOS' "DMC safe" controller polling routine
 - [x] Demonstrate usage of PRG-RAM by using self-modifying code (AX+ TinyRand8)
+- [x] Read the BIOS and determine the revision, if possible

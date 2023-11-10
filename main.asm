@@ -40,12 +40,23 @@ Main:
 		
 +
 		jsr CheckDMC
+		jsr IncFrameCnt									; increment frame count for next frame
+		
 		inc NMIReady
 
 -
 		lda NMIReady									; the usual NMI wait loop
 		bne -
 		beq Main										; unconditional branch back to main loop
+
+IncFrameCnt:
+		inc FrameCount									; increment frame timer
+		bne +
+		
+		inc FrameCount+1
++
+
+		rts
 
 ; "NMI" routine which is entered to bypass the BIOS check
 Bypass:
@@ -111,14 +122,7 @@ Struct:
 
 +
 		dec NMIReady
-		
-		inc FrameCount									; increment frame timer
-		bne +
-
-		inc FrameCount+1
-		
-+
-		jsr ReadOrDownVerifyPads						; read controllers, including expansion port (NOT DMC safe!)
+		jsr ReadOrDownVerifyPads						; read controllers, including expansion port (DMC safe?)
 
 NotReady:
 		jsr SetScroll									; remember to set scroll on lag frames
@@ -416,10 +420,47 @@ NumToChars:													; converts A into hex chars and puts them in X/Y
 NybbleToChar:
 	.db "0123456789ABCDEF"
 
+CheckBIOS:
+		clc
+		lda $fff9
+		adc $fffc
+		ldx #$00
+		cmp #$17										; rev0: $00 + $17
+		beq SaveRev
+		
+		inx
+		cmp #$25										; rev1/twin: $01 + $24
+		beq CheckTwin
+		
+		inx
+		bne UnknownRev
+
+CheckTwin:
+		lda $f6b6										; load a byte from the logo screen data
+		cmp #$28										; check for presence of trademark symbol (rev1)
+		beq SaveRev
+		
+		inx
+		cmp #$24										; check for presence of space (twin)
+		beq SaveRev
+
+UnknownRev:
+		inx												; unknown rev
+		
+SaveRev:
+		lda BIOSRevs,x
+		sta RevNum
+		rts
+
+BIOSRevs:
+	.db "01T?"
+
 SetBGMode:
 		ldx BGMode										; BG mode 0 = palette + initial text, draw immediately
 		bne +
 		
+		jsr CheckBIOS
+		ldx #$00
 		jsr DrawBG
 		inc BGMode
 		rts
@@ -470,11 +511,13 @@ Chars1:
 	.db "asm6f-fds-example"
 Text1Length=$-Chars1
 
-	.db $20, $a8										; destination address (BIG endian)
+	.db $20, $aa										; destination address (BIG endian)
 	.db %00000000 | Text2Length							; d7=increment mode (+1), d6=transfer mode (copy), length
 	
 Chars2:
-	.db "by TakuikaNinja"
+	.db "BIOS Rev. "
+RevNum:
+	.db '?'
 Text2Length=$-Chars2
 	.db $ff												; terminator
 
