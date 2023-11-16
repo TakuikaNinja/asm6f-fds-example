@@ -122,7 +122,7 @@ Struct:
 
 +
 		dec NMIReady
-		jsr ReadOrDownVerifyPads						; read controllers, including expansion port (DMC safe?)
+		jsr ReadOrDownVerifyPads						; read controllers + expansion port (DMC safe, somehow...)
 
 NotReady:
 		jsr SetScroll									; remember to set scroll on lag frames
@@ -526,7 +526,7 @@ BlankData:
 	.db %01000000 | FramesLength						; d7=increment mode (+1), d6=transfer mode (fill), length
 	.db " "
 	.db $21, $09										; destination address (BIG endian)
-	.db %01000000 | RNGLength						; d7=increment mode (+1), d6=transfer mode (fill), length
+	.db %01000000 | RNGLength							; d7=increment mode (+1), d6=transfer mode (fill), length
 	.db " "
 	.db $ff												; terminator
 
