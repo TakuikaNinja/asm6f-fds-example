@@ -40,23 +40,20 @@ Main:
 		
 +
 		jsr CheckDMC
-		jsr IncFrameCnt									; increment frame count for next frame
 		
 		inc NMIReady
 
 -
 		lda NMIReady									; the usual NMI wait loop
 		bne -
-		beq Main										; unconditional branch back to main loop
 
-IncFrameCnt:
-		inc FrameCount									; increment frame timer
+		inc FrameCount									; increment frame timer after NMI
 		bne +
 		
 		inc FrameCount+1
+		
 +
-
-		rts
+		jmp Main										; back to main loop
 
 ; "NMI" routine which is entered to bypass the BIOS check
 Bypass:
@@ -109,6 +106,7 @@ NonMaskableInterrupt:
 		jsr VRAMStructWrite
 Struct:
 	.dw BGData											; this can be overwritten
+		
 		jsr SetScroll									; reset scroll after PPUADDR writes
 		dec NeedDraw
 		
@@ -314,6 +312,7 @@ CheckDMC:
 		lda RAND										; if so, use RNG value instead
 		and #$0f
 		tay
+		
 ++
 		sty DMCRate										; save playback rate for later
 		
