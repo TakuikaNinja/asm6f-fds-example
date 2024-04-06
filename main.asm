@@ -444,15 +444,25 @@ CheckTwin:
 		beq SaveRev
 
 UnknownRev:
-		inx												; unknown rev
+		inx
 		
 SaveRev:
-		lda BIOSRevs,x
+		lda BIOSRevs0,x
 		sta RevNum
+		lda BIOSRevs1,x
+		sta RevNum+1
+		lda BIOSRevs2,x
+		sta RevNum+2
 		rts
 
-BIOSRevs:
-	.db "01T?"
+; these LUTs construct the BIOS revision string found on 2C33 markings
+; "01 ", "01A", "02 " are official, "?? " is unknown/unofficial
+BIOSRevs0:
+	.db "000?"
+BIOSRevs1:
+	.db "112?"
+BIOSRevs2:
+	.db " A  "
 
 SetBGMode:
 		ldx BGMode										; BG mode 0 = palette + initial text, draw immediately
@@ -516,7 +526,7 @@ Text1Length=$-Chars1
 Chars2:
 	.db "BIOS Rev. "
 RevNum:
-	.db '?'
+	.db '?? '
 Text2Length=$-Chars2
 	.db $ff												; terminator
 
