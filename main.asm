@@ -75,17 +75,14 @@ Bypass:
 		
 ; NMI handler
 NonMaskableInterrupt:
-		pha												; back up A
-		lda NMIRunning									; exit if NMI is already in progress
-		beq +
+		bit NMIRunning									; exit if NMI is already in progress
+		bmi InterruptRequest
 		
-		pla
-		rti
-
-+
-		inc NMIRunning									; set flag for NMI in progress
+		sec
+		ror NMIRunning									; set flag for NMI in progress
 		
-		txa												; back up X/Y
+		pha												; back up A/X/Y
+		txa
 		pha
 		tya
 		pha
@@ -132,8 +129,7 @@ NotReady:
 		tax
 		pla
 		
-		dec NMIRunning									; clear flag for NMI in progres before exiting
-		rti
+		asl NMIRunning									; clear flag for NMI in progres before exiting
 		
 ; IRQ handler (unused for now)
 InterruptRequest:
