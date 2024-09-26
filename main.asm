@@ -320,9 +320,9 @@ HandleDMC:
 		lda DMCToggle									; check toggle
 		beq +											; skip sample playback if not set
 		
-		lda #<(DMCSample >> 6)							; sample address
+		lda #DMCSampleAddr								; sample address
 		sta DMC_START
-		lda #((DMCSampleEnd - DMCSample - 1) / 16)		; sample length
+		lda #DMCSampleLength							; sample length
 		sta DMC_LEN
 		lda DMCRate										; random playback rate, non-looping					
 		sta DMC_FREQ
@@ -551,12 +551,17 @@ RNG:
 RNGLength=$-RNGChars
 	.db $ff												; terminator
 
-.org $c000
+; only pad if before lowest sample address, otherwise use next 64 byte slot
+.if $<$c000
+	.pad $c000
+.endif
+.align 64
 DMCSample:
 	.incbin "sample.dmc"
-DMCSampleEnd:
+DMCSampleAddr = <(DMCSample >> 6)
+DMCSampleLength = ($ - DMCSample - 1) / 16
 
-.org NMI_1
+.pad NMI_1
 	.dw NonMaskableInterrupt
 	.dw NonMaskableInterrupt
 	.dw Bypass											; default NMI vector

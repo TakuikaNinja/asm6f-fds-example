@@ -28,13 +28,13 @@
 	.db $00, $00
 	.db "GAMECHAR"
 	.dw $0000
-	.dw chr_end - chr_start
+	.dw chr_length
 	.db CHR
 	
 	.db FileDataBlock
 	chr_start:
 	.incbin "Jroatch-chr-sheet.chr"
-	chr_end:
+	chr_length = $ - chr_start
 
 ; PRG
 	.db FileHeaderBlock
@@ -49,9 +49,7 @@
 	.base $6000
 	prg_start:
 	.include "main.asm"
-	prg_end:
-	
-	prg_length = prg_end - prg_start
+	prg_length = $ - prg_start
 	.base oldaddr + prg_length
 	
 ; kyodaku file
