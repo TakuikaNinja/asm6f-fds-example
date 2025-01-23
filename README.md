@@ -4,11 +4,11 @@ A demonstration of FDS development using asm6f
 
 # Requirements
 
-UNIX system with `asm6f` placed in PATH. Easily portable to Windows.
+GNU make and `asm6f` installed in PATH. 
 
 # Building
 
-`./build.sh`
+`make` or `make all`
 
 # Acknowledgements
 
